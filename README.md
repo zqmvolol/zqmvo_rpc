@@ -205,7 +205,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Credits
 
 - **Author**: zqmvo
-- **Version**: 2.0.0
+- **Version**: 2.0
 - **Discord**: [Kayden's Dev Studios](https://discord.gg/kaydensdevelopment)
 
 ## 📞 Support
