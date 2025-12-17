@@ -214,7 +214,7 @@ For support, join our Discord: [discord.gg/kaydensdevelopment](https://discord.g
 
 ## 📋 Changelog
 
-### Version 2.0.0
+### Version 2.0
 - Enhanced customizable button system
 - Improved GlobalState management
 - Added toggle commands for coordinates and player ID
