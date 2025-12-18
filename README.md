@@ -78,7 +78,7 @@ Automatically detects and integrates with:
    ensure ox_lib
    ensure oxmysql
    ensure your-queue-system  # Load your queue system BEFORE discord RPC
-   ensure discord-rpc-resource
+   ensure zqmvo_discord
    ```
 
 6. **Restart** your server
@@ -115,16 +115,12 @@ local Config = {
 
 ## 🎮 Commands
 
-### Player Commands
+### Admin Commands
 | Command | Description |
 |---------|-------------|
 | `/togglecoords` | Toggle coordinate display on/off |
 | `/toggleid` | Toggle player ID display on/off |
 | `/updaterpc` | Manually update Rich Presence |
-
-### Admin Commands
-| Command | Description | Permission |
-|---------|-------------|------------|
 | `/rpcstats` | View detailed RPC statistics | Any |
 | `/setqueue <number>` | Manually set queue size | `discord.admin` |
 | `/refreshrpc` | Force refresh all counts | `discord.admin` |
