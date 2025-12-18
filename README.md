@@ -1,4 +1,4 @@
-# 🎮 Enhanced Discord Rich Presence for FiveM
+#  Discord Rich Presence for FiveM
 
 A feature-rich Discord RPC system for FiveM servers with automatic queue integration, customizable buttons, and real-time player tracking.
 
