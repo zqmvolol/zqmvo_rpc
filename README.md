@@ -1,229 +1,262 @@
-# Discord Rich Presence for FiveM
+# 🎮 Enhanced Discord Rich Presence for FiveM
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
-![FiveM](https://img.shields.io/badge/FiveM-Compatible-orange.svg)
+A feature-rich Discord RPC system for FiveM servers with automatic queue integration, customizable buttons, and real-time player tracking.
 
-An enhanced Discord Rich Presence resource for FiveM servers with customizable buttons, real-time player information, and queue system integration.
+![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)
+![FiveM](https://img.shields.io/badge/FiveM-Compatible-green.svg)
+![License](https://img.shields.io/badge/license-MIT-orange.svg)
 
 ## ✨ Features
 
-- 🎮 **Dynamic Rich Presence** - Real-time updates of player status
-- 📍 **Location Tracking** - Displays current street name
-- 👥 **Player Count** - Shows current players vs max capacity
-- 🎫 **Queue Integration** - Compatible with queue systems
-- 🔘 **Custom Buttons** - Up to 2 customizable buttons with links
-- 🆔 **Player ID Display** - Shows server ID in Rich Presence
-- 📊 **Coordinate Display** - Optional coordinate tracking (toggle-able)
-- ⚙️ **Highly Configurable** - Easy customization options
-- 📡 **State Management** - Uses GlobalState for efficient updates
-- 🛠️ **Admin Commands** - Built-in commands for management
+### 🎯 Core Features
+- **Real-time Player Count** - Displays current players vs max capacity
+- **Queue System Integration** - Automatic detection and display of queue size
+- **Street Name Display** - Shows current player location in-game
+- **Player ID Display** - Shows server ID in Discord status
+- **Customizable Buttons** - Up to 2 clickable buttons (Discord invite, website, etc.)
+- **Coordinate Display** - Optional player coordinate display (toggle-able)
+
+### 🔄 Queue System Support
+Automatically detects and integrates with:
+- ✅ **connectqueue** - Most common FiveM queue
+- ✅ **txAdmin Queue** - Built-in txAdmin queue
+- ✅ **Badger_Queue** - Popular queue system
+- ✅ **hardcap** - Basic hardcap queue
+- ✅ **qb-queue** - QBCore queue system
+- ✅ **esx_queue** - ESX queue system
+- ✅ **Custom Queues** - Easy integration via events/exports
+
+### 🎨 Customization
+- Toggle individual display elements (coords, ID, street, player count)
+- Configurable update intervals
+- Custom button labels and URLs
+- Custom Discord application assets
 
 ## 📋 Requirements
 
-- [ox_lib](https://github.com/overextended/ox_lib) - Core dependency
-- [oxmysql](https://github.com/overextended/oxmysql) - Database wrapper
-- Discord Application (for custom Rich Presence)
+- FiveM Server
+- ox_lib
+- oxmysql (for database features)
 
 ## 🚀 Installation
 
-1. **Download** the resource and place it in your server's `resources` folder
+1. **Download** the resource and place it in your `resources` folder
 
-2. **Create a Discord Application**:
+2. **Configure Discord Application**
    - Go to [Discord Developer Portal](https://discord.com/developers/applications)
-   - Click "New Application"
-   - Name your application (this will show in Rich Presence)
-   - Navigate to "Rich Presence" → "Art Assets"
-   - Upload your images (recommended: 1024x1024px)
-   - Note your Application ID
+   - Create a new application
+   - Copy your Application ID
+   - Upload assets (images) in the "Rich Presence" section
 
-3. **Configure the Resource**:
-   - Open `discordpr_cl.lua`
-   - Replace the Application ID on line 79:
-     ```lua
-     SetDiscordAppId("YOUR_APPLICATION_ID_HERE")
-     ```
-   - Update the asset names to match your uploaded images:
-     ```lua
-     SetDiscordRichPresenceAsset("your_main_image_name")
-     SetDiscordRichPresenceAssetSmall("your_small_image_name")
-     ```
-   - Customize the buttons (lines 10-17):
-     ```lua
-     buttons = {
-         {
-             label = "Join Server",
-             url = "fivem://connect/your-server-ip"
-         },
-         {
-             label = "Discord",
-             url = "https://discord.gg/your-invite"
-         }
-     }
-     ```
-
-4. **Add to server.cfg**:
+3. **Edit `discordpr_cl.lua`**
+   ```lua
+   SetDiscordAppId("YOUR_APPLICATION_ID") -- Replace with your Discord App ID
+   SetDiscordRichPresenceAsset("main_image") -- Your main image asset name
+   SetDiscordRichPresenceAssetText("Welcome to our server!")
+   SetDiscordRichPresenceAssetSmall("small_logo") -- Your small image asset name
+   SetDiscordRichPresenceAssetSmallText("Online Now")
    ```
+
+4. **Configure Buttons** (Optional)
+   ```lua
+   local Config = {
+       buttons = {
+           {
+               label = "Join Our Discord!",
+               url = "https://discord.gg/your-invite"
+           },
+           {
+               label = "Visit Website",
+               url = "https://yourserver.com"
+           }
+       }
+   }
+   ```
+
+5. **Add to `server.cfg`**
+   ```cfg
    ensure ox_lib
    ensure oxmysql
-   ensure discord-rpc
+   ensure your-queue-system  # Load your queue system BEFORE discord RPC
+   ensure discord-rpc-resource
    ```
+
+6. **Restart** your server
 
 ## ⚙️ Configuration
 
-### Client Configuration (`discordpr_cl.lua`)
+### Client-Side (`discordpr_cl.lua`)
 
 ```lua
 local Config = {
     buttons = {
         {
-            label = "Join Server",              -- Button text
-            url = "fivem://connect/your-ip"     -- Connect link
+            label = "Join Discord",
+            url = "https://discord.gg/your-invite"
         },
         {
-            label = "Discord",                   -- Button text
-            url = "https://discord.gg/invite"   -- Discord invite
+            label = "Website",
+            url = "https://yourserver.com"
         }
     },
-    updateInterval = 1000,        -- Update frequency (ms)
-    showCoordinates = false,      -- Show player coordinates
-    showPlayerId = true,          -- Show player server ID
-    showStreet = true,            -- Show street name
-    showPlayerCount = true,       -- Show player count
-    showQueue = true              -- Show queue size
+    updateInterval = 1000,      -- Update frequency (milliseconds)
+    showCoordinates = false,    -- Show player coordinates
+    showPlayerId = true,        -- Show player server ID
+    showStreet = true,          -- Show street name
+    showPlayerCount = true,     -- Show player count
+    showQueue = true            -- Show queue size
 }
 ```
 
-### Server Configuration (`discordpr_sv.lua`)
-
-```lua
-local Config = {
-    enableQueue = true,  -- Enable/disable queue system
-    maxPlayers = GetConvarInt("sv_maxclients", 32)
-}
-```
+### Server-Side (Automatic)
+- Automatically reads `sv_maxclients` from your server.cfg
+- Auto-detects queue system on startup
+- No manual configuration needed!
 
 ## 🎮 Commands
 
 ### Player Commands
-
 | Command | Description |
 |---------|-------------|
-| `/togglecoords` | Toggle coordinate display in Rich Presence |
-| `/toggleid` | Toggle player ID display in Rich Presence |
-| `/updaterpc` | Manually refresh Rich Presence |
-| `/rpcstats` | View current server statistics |
+| `/togglecoords` | Toggle coordinate display on/off |
+| `/toggleid` | Toggle player ID display on/off |
+| `/updaterpc` | Manually update Rich Presence |
 
 ### Admin Commands
+| Command | Description | Permission |
+|---------|-------------|------------|
+| `/rpcstats` | View detailed RPC statistics | Any |
+| `/setqueue <number>` | Manually set queue size | `discord.admin` |
+| `/refreshrpc` | Force refresh all counts | `discord.admin` |
+| `/rpcdetect` | Re-run queue system detection | `discord.admin` |
 
-| Command | Usage | Description |
-|---------|-------|-------------|
-| `/setqueue` | `/setqueue <number>` | Manually set queue size (requires `discord.admin` ace permission) |
+## 🔌 Custom Queue Integration
 
-## 📡 Exports
+### For Custom Queue Systems
 
-### Server Exports
+**Method 1: Using Events**
+```lua
+-- In your queue system, when queue size changes:
+TriggerEvent("discord:updateQueue", queueSize)
+```
+
+**Method 2: Using Exports**
+```lua
+-- In your queue system:
+exports['discord-rpc-resource']:updateQueue(queueSize)
+```
+
+**Method 3: Add to Auto-Detection**
+Edit `discordpr_sv.lua` and add your system to the `QueueSystems` table:
+```lua
+{
+    name = "your_queue_name",
+    resource = "your_queue_resource",
+    export = "yourExportFunction",
+    getQueue = function()
+        local success, result = pcall(function()
+            return exports['your_queue_resource']:yourExportFunction()
+        end)
+        return success and result or 0
+    end
+}
+```
+
+## 📊 Exports
+
+### Server-Side Exports
 
 ```lua
--- Update queue size from another resource
+-- Update queue count from external resource
 exports['discord-rpc']:updateQueue(queueSize)
 
 -- Get current player count
-local playerCount = exports['discord-rpc']:getPlayerCount()
+local players = exports['discord-rpc']:getPlayerCount()
 
 -- Get max players
-local maxPlayers = exports['discord-rpc']:getMaxPlayers()
+local max = exports['discord-rpc']:getMaxPlayers()
+
+-- Get current queue count
+local queue = exports['discord-rpc']:getQueueCount()
 ```
 
-### Example Queue Integration
+## 🐛 Troubleshooting
 
-```lua
--- In your queue resource
-local queueSize = #GetQueueList() -- Your queue function
-exports['discord-rpc']:updateQueue(queueSize)
+### Queue shows 0 even with people in queue
+1. Check server console for: `[Discord RPC] Detected queue system: [name]`
+2. If it says "No queue system detected":
+   - Ensure your queue resource starts BEFORE discord RPC
+   - Use `/rpcdetect` to re-scan for queue systems
+   - Check your queue resource name matches supported systems
+
+### Player count incorrect
+1. Use `/refreshrpc` to force update
+2. Check F8 console for errors
+3. Script auto-corrects every 60 seconds
+
+### Max players showing wrong number
+- Verify `sv_maxclients` is set correctly in `server.cfg`
+- Restart the resource after changing `sv_maxclients`
+- Check startup message: `[Discord RPC] Max Players set to: X`
+
+### Discord not updating
+1. Verify your Discord Application ID is correct
+2. Check that assets are uploaded in Discord Developer Portal
+3. Restart Discord client
+4. Use `/updaterpc` to force update
+
+## 📝 Example Discord Status
+
 ```
-
-## 🎨 Discord Application Setup
-
-### Creating Your Application
-
-1. **Application Name**: This appears as "Playing [Your Application Name]"
-2. **Application ID**: Found in "General Information"
-3. **Rich Presence Assets**: Upload under "Rich Presence" → "Art Assets"
-   - Main image: Large image next to text (1024x1024 recommended)
-   - Small image: Small overlay image (512x512 recommended)
-
-### Asset Guidelines
-
-- **Format**: PNG or JPG
-- **Size**: 1024x1024px (main), 512x512px (small)
-- **Name**: Use lowercase, no spaces (e.g., `server_logo`, `online_icon`)
-
-## 📸 Rich Presence Display Example
-
-```
-Playing Chicago Loop Roleplay
-📍 Vinewood Boulevard
+🏙️ Vinewood Blvd
 ID: 42 | Players: 45/64 | Queue: 3
 ```
 
-## 🔧 Troubleshooting
+With buttons:
+- [Join Discord]
+- [Visit Store]
 
-### Rich Presence Not Showing
+## 🔄 Recent Updates
 
-1. Verify Discord Application ID is correct
-2. Check that asset names match exactly (case-sensitive)
-3. Ensure Discord is running on the same machine as FiveM
-4. Restart FiveM client after configuration changes
+### Version 2.1.0
+- ✅ Fixed max player detection (was stuck at 30/32)
+- ✅ Added automatic queue system detection
+- ✅ Fixed connection blocking issues
+- ✅ Improved player count accuracy
+- ✅ Added support for 6 major queue systems
+- ✅ New admin commands for debugging
+- ✅ Better error handling with pcall
+- ✅ Performance optimizations
 
-### Player Count Incorrect
-
-- Use `/rpcstats` command to check current values
-- Server automatically corrects mismatches every minute
-- Check server console for correction messages
-
-### Queue Not Updating
-
-- Ensure `enableQueue` is set to `true` in server config
-- Verify your queue system calls the export function
-- Test with `/setqueue <number>` command
+See [CHANGELOG.md](CHANGELOG.md) for full version history.
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
+Contributions are welcome! Please:
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
-## 📝 License
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## 👥 Support
+
+- **Issues**: Open an issue on Discord
+- **Discord**: Join our [Discord server](https://discord.gg/sdyruNpXpA)
+
 ## 🙏 Credits
 
-- **Author**: zqmvo
-- **Version**: 2.0
-- **Discord**: [Kayden's Dev Studios](https://discord.gg/kaydensdevelopment)
+**Author**: zqmvo
 
-## 📞 Support
+**Special Thanks**:
+- Community for reporting bugs and suggesting features
+- Queue system developers for making integration possible
+- FiveM community for testing and feedback
 
-For support, join our Discord: [discord.gg/kaydensdevelopment](https://discord.gg/kaydensdevelopment)
-
-## 📋 Changelog
-
-### Version 2.0
-- Enhanced customizable button system
-- Improved GlobalState management
-- Added toggle commands for coordinates and player ID
-- Implemented admin commands for queue management
-- Added automatic player count verification
-- Enhanced export functions
-- Improved error handling and fallbacks
-- Better documentation and configuration options
 
 ---
 
-**Note**: Remember to keep your Discord Application ID private and never commit it to public repositories. Consider using environment variables or separate config files for sensitive information.
+**Note**: Replace placeholder URLs, Discord invites, and application IDs with your actual information before using!
