@@ -1,126 +1,305 @@
-local list, count = {}, 0
+local playerCount = 0
+local queueCount = 0
+local maxPlayers = GetConvarInt("sv_maxclients", 64)
 
--- Configuration for queue system
-local Config = {
-    enableQueue = true,  -- Enable/disable queue system
-    maxPlayers = GetConvarInt("sv_maxclients", 32)
+-- Queue system detection and integration
+local QueueIntegration = {
+    detectedSystem = "none",
+    checkInterval = 5000, -- Check queue every 5 seconds
 }
 
-AddEventHandler("playerDropped", function()
-    if list[source] then
-        count = count - 1
-        list[source] = nil
-        GlobalState:set("playersCount", count, true)
-        
-        -- Update queue if enabled
-        if Config.enableQueue then
-            -- You can add queue management logic here
-            GlobalState:set("queue", 0, true) -- Set to actual queue count from your queue system
+-- Supported queue systems and their detection
+local QueueSystems = {
+    {
+        name = "connectqueue",
+        resource = "connectqueue",
+        export = "getQueueCount",
+        getQueue = function()
+            local success, result = pcall(function()
+                return exports.connectqueue:getQueueCount()
+            end)
+            return success and result or 0
+        end
+    },
+    {
+        name = "txAdmin",
+        resource = "txAdmin",
+        export = "getQueueSize",
+        getQueue = function()
+            local success, result = pcall(function()
+                return exports.txAdmin:getQueueSize()
+            end)
+            return success and result or 0
+        end
+    },
+    {
+        name = "Badger_Queue",
+        resource = "Badger_Queue",
+        export = "getQueueSize",
+        getQueue = function()
+            local success, result = pcall(function()
+                return exports['Badger_Queue']:getQueueSize()
+            end)
+            return success and result or 0
+        end
+    },
+    {
+        name = "hardcap",
+        resource = "hardcap",
+        export = "getQueueCount",
+        getQueue = function()
+            local success, result = pcall(function()
+                return exports.hardcap:getQueueCount()
+            end)
+            return success and result or 0
+        end
+    },
+    {
+        name = "qb-queue",
+        resource = "qb-queue",
+        export = "GetQueueSize",
+        getQueue = function()
+            local success, result = pcall(function()
+                return exports['qb-queue']:GetQueueSize()
+            end)
+            return success and result or 0
+        end
+    },
+    {
+        name = "esx_queue",
+        resource = "esx_queue",
+        export = "getQueueCount",
+        getQueue = function()
+            local success, result = pcall(function()
+                return exports.esx_queue:getQueueCount()
+            end)
+            return success and result or 0
+        end
+    }
+}
+
+-- Detect which queue system is running
+local function DetectQueueSystem()
+    for _, system in ipairs(QueueSystems) do
+        local resourceState = GetResourceState(system.resource)
+        if resourceState == "started" or resourceState == "starting" then
+            print("^2[Discord RPC] Detected queue system: " .. system.name .. "^7")
+            QueueIntegration.detectedSystem = system.name
+            return system
         end
     end
+    print("^3[Discord RPC] No queue system detected - queue display disabled^7")
+    return nil
+end
+
+-- Get queue count from detected system
+local function GetQueueCount()
+    if QueueIntegration.detectedSystem == "none" then
+        return 0
+    end
+    
+    for _, system in ipairs(QueueSystems) do
+        if system.name == QueueIntegration.detectedSystem then
+            local count = system.getQueue()
+            return count or 0
+        end
+    end
+    
+    return 0
+end
+
+-- Update player count (doesn't interfere with connections)
+local function UpdatePlayerCount()
+    local players = GetPlayers()
+    playerCount = #players
+    GlobalState:set("playersCount", playerCount, true)
+end
+
+-- Update queue count
+local function UpdateQueueCount()
+    queueCount = GetQueueCount()
+    GlobalState:set("queue", queueCount, true)
+end
+
+-- Player connecting (for accurate tracking, doesn't block)
+AddEventHandler("playerConnecting", function(name, setKickReason, deferrals)
+    -- Don't defer or block, just update count
+    CreateThread(function()
+        Wait(100)
+        UpdatePlayerCount()
+    end)
 end)
 
+-- Player joined
 RegisterServerEvent("pm_queue", function()
-    if not list[source] then
-        count = count + 1
-        list[source] = count
-        GlobalState:set("playersCount", count, true)
-    end
+    UpdatePlayerCount()
 end)
 
--- Event to update queue size (call this from your queue system)
-RegisterServerEvent("discord:updateQueue", function(queueSize)
-    if Config.enableQueue then
-        GlobalState:set("queue", queueSize or 0, true)
-    end
+AddEventHandler("playerJoining", function()
+    UpdatePlayerCount()
 end)
 
--- Export function to update queue from other resources
+-- Player dropped
+AddEventHandler("playerDropped", function(reason)
+    CreateThread(function()
+        Wait(100)
+        UpdatePlayerCount()
+        UpdateQueueCount()
+    end)
+end)
+
+-- Export functions for other resources to use
 exports('updateQueue', function(queueSize)
-    if Config.enableQueue then
-        GlobalState:set("queue", queueSize or 0, true)
+    if queueSize then
+        queueCount = queueSize
+        GlobalState:set("queue", queueCount, true)
+    end
+    return queueCount
+end)
+
+exports('getPlayerCount', function()
+    return playerCount
+end)
+
+exports('getMaxPlayers', function()
+    return maxPlayers
+end)
+
+exports('getQueueCount', function()
+    return queueCount
+end)
+
+-- Manual queue update event (for custom queue systems)
+RegisterServerEvent("discord:updateQueue", function(queueSize)
+    if queueSize and queueSize >= 0 then
+        queueCount = queueSize
+        GlobalState:set("queue", queueCount, true)
     end
 end)
 
--- Export function to get current player count
-exports('getPlayerCount', function()
-    return count
-end)
-
--- Export function to get max players
-exports('getMaxPlayers', function()
-    return Config.maxPlayers
-end)
-
+-- Initialize and main loop
 CreateThread(function()
-    GlobalState:set("maxPlayers", Config.maxPlayers, true)
-    GlobalState:set("queue", 0, true) -- Initialize queue to 0
+    -- Wait for all resources to start
+    Wait(5000)
     
-    -- Optional: Update player count every minute as a fallback
+    -- Detect queue system
+    local queueSystem = DetectQueueSystem()
+    
+    -- Set initial global states
+    GlobalState:set("maxPlayers", maxPlayers, true)
+    GlobalState:set("queue", 0, true)
+    GlobalState:set("playersCount", 0, true)
+    
+    print("^2[Discord RPC] Initialized - Max Players: " .. maxPlayers .. "^7")
+    
+    -- Initial update
+    UpdatePlayerCount()
+    UpdateQueueCount()
+    
+    -- Main update loop
     while true do
-        Citizen.Wait(60000) -- Wait 1 minute
+        Wait(QueueIntegration.checkInterval)
         
-        -- Verify player count matches actual online players
-        local actualCount = #GetPlayers()
-        if count ~= actualCount then
-            print("^3[Discord RPC] Player count mismatch detected. Correcting: " .. count .. " -> " .. actualCount .. "^7")
-            count = actualCount
-            GlobalState:set("playersCount", count, true)
+        -- Update player count
+        UpdatePlayerCount()
+        
+        -- Update queue count if we have a queue system
+        if queueSystem then
+            UpdateQueueCount()
         end
     end
 end)
 
--- Command for admins to manually set queue size (useful for testing)
+-- Fallback: verify counts every minute
+CreateThread(function()
+    while true do
+        Wait(60000) -- 1 minute
+        
+        local actualPlayers = #GetPlayers()
+        if playerCount ~= actualPlayers then
+            print("^3[Discord RPC] Player count drift detected. Correcting: " .. playerCount .. " -> " .. actualPlayers .. "^7")
+            playerCount = actualPlayers
+            GlobalState:set("playersCount", playerCount, true)
+        end
+    end
+end)
+
+-- Admin commands
 RegisterCommand("setqueue", function(source, args)
-    local player = source
-    
-    -- Check if player has admin permissions (implement your own permission check)
-    if IsPlayerAceAllowed(player, "discord.admin") or player == 0 then -- player == 0 means console
-        local queueSize = tonumber(args[1])
-        if queueSize and queueSize >= 0 then
-            GlobalState:set("queue", queueSize, true)
-            if player == 0 then
-                print("^2[Discord RPC] Queue size set to: " .. queueSize .. "^7")
+    if IsPlayerAceAllowed(source, "discord.admin") or source == 0 then
+        local size = tonumber(args[1])
+        if size and size >= 0 then
+            queueCount = size
+            GlobalState:set("queue", size, true)
+            local msg = "^2[Discord RPC] Queue manually set to: " .. size .. "^7"
+            if source == 0 then
+                print(msg)
             else
-                TriggerClientEvent("chat:addMessage", player, {
+                TriggerClientEvent("chat:addMessage", source, {
                     color = { 0, 255, 0 },
-                    multiline = true,
-                    args = {"Discord RPC", "Queue size set to: " .. queueSize}
+                    args = {"Discord RPC", "Queue set to: " .. size}
                 })
             end
         else
-            if player == 0 then
-                print("^1[Discord RPC] Invalid queue size. Please provide a valid number.^7")
+            local msg = "^1[Discord RPC] Invalid queue size^7"
+            if source == 0 then
+                print(msg)
             else
-                TriggerClientEvent("chat:addMessage", player, {
+                TriggerClientEvent("chat:addMessage", source, {
                     color = { 255, 0, 0 },
-                    multiline = true,
-                    args = {"Discord RPC", "Invalid queue size. Please provide a valid number."}
+                    args = {"Discord RPC", "Invalid queue size"}
                 })
             end
         end
     else
-        TriggerClientEvent("chat:addMessage", player, {
+        TriggerClientEvent("chat:addMessage", source, {
             color = { 255, 0, 0 },
-            multiline = true,
-            args = {"Discord RPC", "You don't have permission to use this command."}
+            args = {"Discord RPC", "No permission"}
         })
     end
 end, false)
 
--- Command to get current RPC stats
-RegisterCommand("rpcstats", function(source, args)
-    local player = source
-    local statsMessage = string.format("Players: %d/%d | Queue: %d", 
-        count, Config.maxPlayers, GlobalState.queue or 0)
+RegisterCommand("rpcstats", function(source)
+    local stats = string.format("Players: %d/%d | Queue: %d | System: %s", 
+        playerCount, maxPlayers, queueCount, QueueIntegration.detectedSystem)
     
-    if player == 0 then
-        print("^2[Discord RPC Stats] " .. statsMessage .. "^7")
+    if source == 0 then
+        print("^2[Discord RPC] " .. stats .. "^7")
     else
-        TriggerClientEvent("chat:addMessage", player, {
+        TriggerClientEvent("chat:addMessage", source, {
             color = { 0, 255, 255 },
-            multiline = true,
-            args = {"Discord RPC Stats", statsMessage}
+            args = {"Discord RPC", stats}
         })
+    end
+end, false)
+
+RegisterCommand("refreshrpc", function(source)
+    if IsPlayerAceAllowed(source, "discord.admin") or source == 0 then
+        UpdatePlayerCount()
+        UpdateQueueCount()
+        local msg = "^2[Discord RPC] Stats refreshed - Players: " .. playerCount .. " | Queue: " .. queueCount .. "^7"
+        if source == 0 then
+            print(msg)
+        else
+            TriggerClientEvent("chat:addMessage", source, {
+                color = { 0, 255, 0 },
+                args = {"Discord RPC", "Stats refreshed"}
+            })
+        end
+    end
+end, false)
+
+-- Debug command
+RegisterCommand("rpcdetect", function(source)
+    if IsPlayerAceAllowed(source, "discord.admin") or source == 0 then
+        local queueSystem = DetectQueueSystem()
+        if source == 0 then
+            print("^2[Discord RPC] Queue detection complete^7")
+        else
+            TriggerClientEvent("chat:addMessage", source, {
+                color = { 0, 255, 0 },
+                args = {"Discord RPC", "Detected: " .. (queueSystem and queueSystem.name or "none")}
+            })
+        end
     end
 end, false)
